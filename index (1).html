@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Matriz - Móveis e Colchões</title>
+    <!-- Tailwind CSS for clean, huge buttons and readable typography -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .btn-large { min-height: 70px; font-size: 1.25rem; font-weight: bold; transition: all 0.2s; }
+        .btn-large:hover { transform: translateY(-2px); shadow: lg; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+
+    <!-- Top Header -->
+    <header class="bg-slate-800 text-white shadow-md p-4 text-center">
+        <h1 class="text-3xl font-bold">Controle da Matriz - Móveis e Colchões</h1>
+        <p class="text-slate-300 text-lg mt-1">Sistema simples para recebimento de notas (DANFE) e envio para filiais</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-6">
+
+        <!-- Navigation Tabs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <button onclick="switchTab('tab-entrada')" id="btn-tab-entrada" class="btn-large bg-blue-600 text-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2">
+                📥 1. Registrar Entrada (DANFE)
+            </button>
+            <button onclick="switchTab('tab-envio')" id="btn-tab-envio" class="btn-large bg-gray-200 text-gray-700 rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2">
+                📤 2. Enviar p/ Filial
+            </button>
+            <button onclick="switchTab('tab-estoque')" id="btn-tab-estoque" class="btn-large bg-gray-200 text-gray-700 rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2">
+                📦 3. Ver Estoque Matriz
+            </button>
+            <button onclick="exportarExcel()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2">
+                📊 Gerar Relatório Excel
+            </button>
+        </div>
+
+        <!-- TAB 1: REGISTRAR ENTRADA (DANFE) -->
+        <div id="tab-entrada" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-blue-800 mb-4 border-b pb-2">Registrar Chegada de Mercadoria (Nota Fiscal / DANFE)</h2>
+            <form id="form-entrada" onsubmit="salvarEntrada(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Nº da DANFE (Nota Fiscal):</label>
+                    <input type="text" id="ent-danfe" required placeholder="Ex: 123456" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Data de Cadastro:</label>
+                    <input type="date" id="ent-data" required class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Nome do Fornecedor:</label>
+                    <input type="text" id="ent-fornecedor" required placeholder="Ex: Ortobom Indústria de Colchões" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Código do Produto:</label>
+                    <input type="text" id="ent-codigo" required placeholder="Ex: COL-001" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Descrição do Produto:</label>
+                    <input type="text" id="ent-descricao" required placeholder="Ex: Colchão Casal D33 138x188" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Quantidade:</label>
+                    <input type="number" id="ent-qtd" min="1" required placeholder="Ex: 10" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Valor Unitário (R$):</label>
+                    <input type="number" step="0.01" id="ent-valor" required placeholder="Ex: 450.00" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:outline-none">
+                </div>
+                <div class="md:col-span-2 mt-4">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-2xl font-bold py-4 rounded-xl shadow-lg transition">
+                        💾 Salvar Entrada no Estoque
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TAB 2: ENVIAR PARA FILIAL -->
+        <div id="tab-envio" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-4 border-b pb-2">Enviar Mercadoria para Loja Filial</h2>
+            <form id="form-envio" onsubmit="salvarEnvio(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Data do Envio:</label>
+                    <input type="date" id="env-data" required class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Loja Filial Destino:</label>
+                    <select id="env-loja-select" onchange="verificarOutraLoja(this.value)" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:outline-none bg-white">
+                        <!-- Preenchido via JS -->
+                    </select>
+                    <!-- Campo extra caso escolha cadastrar nova loja -->
+                    <div id="div-nova-loja" class="mt-2 hidden">
+                        <input type="text" id="env-nova-loja-input" placeholder="Digite o nome da nova loja filial..." class="w-full text-xl p-3 border-2 border-indigo-400 rounded-xl focus:outline-none bg-indigo-50">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Código do Produto:</label>
+                    <input type="text" id="env-codigo" required placeholder="Ex: COL-001" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Quantidade Enviada:</label>
+                    <input type="number" id="env-qtd" min="1" required placeholder="Ex: 2" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-lg font-semibold text-gray-700 mb-1">Nome do Responsável pelo Recebimento:</label>
+                    <input type="text" id="env-resp" required placeholder="Ex: Carlos Silva" class="w-full text-xl p-3 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:outline-none">
+                </div>
+                <div class="md:col-span-2 mt-4">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-bold py-4 rounded-xl shadow-lg transition">
+                        🚚 Registrar Envio para Filial
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TAB 3: ESTOQUE ATUAL -->
+        <div id="tab-estoque" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Estoque Atual na Matriz</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 text-white text-lg">
+                            <th class="p-3">Cód. Produto</th>
+                            <th class="p-3">Descrição</th>
+                            <th class="p-3 text-center">Qtd. Matriz</th>
+                            <th class="p-3 text-right">Valor Unitário</th>
+                            <th class="p-3 text-right">Total em Estoque</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-estoque-body" class="text-lg divide-y divide-gray-200">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dica / Rodapé de Ajuda -->
+        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-center text-amber-900 text-lg">
+            💡 **Dica:** Sempre que terminar de dar entradas ou enviar produtos, clique no botão verde <strong class="text-emerald-700">"📊 Gerar Relatório Excel"</strong> para baixar o relatório completo e seguro no seu computador!
+        </div>
+
+    </main>
+
+    <script>
+        // Lojas iniciais padrão
+        if (!localStorage.getItem('matriz_lojas')) {
+            const lojasIniciais = [
+                "Reta Móveis",
+                "Reta Colchões 1",
+                "Reta Colchões 2",
+                "Magarca Colchões 1",
+                "Magarca Móveis 1"
+            ];
+            localStorage.setItem('matriz_lojas', JSON.stringify(lojasIniciais));
+        }
+
+        // Inicializar dados de exemplo se estiver vazio
+        if (!localStorage.getItem('matriz_entradas')) {
+            const entradasIniciais = [
+                { danfe: "124580", data: "2026-06-01", fornecedor: "Ortobom Indústria de Colchões Ltda", codigo: "COL-001", descricao: "Colchão Casal Ortobom D33", qtd: 30, valor: 450.00 },
+                { danfe: "124580", data: "2026-06-01", fornecedor: "Ortobom Indústria de Colchões Ltda", codigo: "COL-002", descricao: "Colchão Solteiro Castor Pocket", qtd: 20, valor: 380.00 },
+                { danfe: "982310", data: "2026-06-03", fornecedor: "Móveis Arapongas S/A", codigo: "MOV-101", descricao: "Guarda-Roupa Casal 6 Portas", qtd: 10, valor: 1200.00 }
+            ];
+            localStorage.setItem('matriz_entradas', JSON.stringify(entradasIniciais));
+        }
+
+        if (!localStorage.getItem('matriz_envios')) {
+            const enviosIniciais = [
+                { data: "2026-06-04", loja: "Reta Móveis", codigo: "COL-001", qtd: 5, resp: "Carlos Silva" },
+                { data: "2026-06-06", loja: "Magarca Móveis 1", codigo: "MOV-101", qtd: 2, resp: "Mariana Souza" }
+            ];
+            localStorage.setItem('matriz_envios', JSON.stringify(enviosIniciais));
+        }
+
+        // Definir data de hoje por padrão nos inputs de data
+        document.getElementById('ent-data').valueAsDate = new Date();
+        document.getElementById('env-data').valueAsDate = new Date();
+
+        // Carregar select de lojas
+        atualizarSelectLojas();
+
+        function atualizarSelectLojas() {
+            let lojas = JSON.parse(localStorage.getItem('matriz_lojas') || '[]');
+            let select = document.getElementById('env-loja-select');
+            select.innerHTML = '';
+
+            lojas.forEach(loja => {
+                let opt = document.createElement('option');
+                opt.value = loja;
+                opt.textContent = loja;
+                select.appendChild(opt);
+            });
+
+            // Opção para cadastrar nova loja
+            let optNova = document.createElement('option');
+            optNova.value = "__NOVA_LOJA__";
+            optNova.textContent = "➕ Cadastrar Nova Loja Filial...";
+            select.appendChild(optNova);
+        }
+
+        function verificarOutraLoja(valor) {
+            let divNova = document.getElementById('div-nova-loja');
+            if (valor === "__NOVA_LOJA__") {
+                divNova.classList.remove('hidden');
+                document.getElementById('env-nova-loja-input').focus();
+            } else {
+                divNova.classList.add('hidden');
+            }
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-entrada').classList.add('hidden');
+            document.getElementById('tab-envio').classList.add('hidden');
+            document.getElementById('tab-estoque').classList.add('hidden');
+
+            document.getElementById('btn-tab-entrada').className = "btn-large bg-gray-200 text-gray-700 rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+            document.getElementById('btn-tab-envio').className = "btn-large bg-gray-200 text-gray-700 rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+            document.getElementById('btn-tab-estoque').className = "btn-large bg-gray-200 text-gray-700 rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+
+            document.getElementById(tabId).classList.remove('hidden');
+
+            if (tabId === 'tab-entrada') {
+                document.getElementById('btn-tab-entrada').className = "btn-large bg-blue-600 text-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+            } else if (tabId === 'tab-envio') {
+                document.getElementById('btn-tab-envio').className = "btn-large bg-indigo-600 text-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+                atualizarSelectLojas();
+            } else if (tabId === 'tab-estoque') {
+                document.getElementById('btn-tab-estoque').className = "btn-large bg-slate-700 text-white rounded-xl shadow px-4 py-3 flex items-center justify-center gap-2";
+                atualizarTabelaEstoque();
+            }
+        }
+
+        function salvarEntrada(e) {
+            e.preventDefault();
+            const novaEntrada = {
+                danfe: document.getElementById('ent-danfe').value,
+                data: document.getElementById('ent-data').value,
+                fornecedor: document.getElementById('ent-fornecedor').value,
+                codigo: document.getElementById('ent-codigo').value.trim().toUpperCase(),
+                descricao: document.getElementById('ent-descricao').value,
+                qtd: parseInt(document.getElementById('ent-qtd').value),
+                valor: parseFloat(document.getElementById('ent-valor').value)
+            };
+
+            let entradas = JSON.parse(localStorage.getItem('matriz_entradas') || '[]');
+            entradas.push(novaEntrada);
+            localStorage.setItem('matriz_entradas', JSON.stringify(entradas));
+
+            alert('✅ Entrada de mercadoria registrada com sucesso!');
+            document.getElementById('form-entrada').reset();
+            document.getElementById('ent-data').valueAsDate = new Date();
+        }
+
+        function salvarEnvio(e) {
+            e.preventDefault();
+            
+            let lojaSelecionada = document.getElementById('env-loja-select').value;
+            
+            if (lojaSelecionada === "__NOVA_LOJA__") {
+                let novaLojaNome = document.getElementById('env-nova-loja-input').value.trim();
+                if (!novaLojaNome) {
+                    alert('❌ Por favor, digite o nome da nova loja filial.');
+                    return;
+                }
+                // Salvar nova loja na lista
+                let lojas = JSON.parse(localStorage.getItem('matriz_lojas') || '[]');
+                if (!lojas.includes(novaLojaNome)) {
+                    lojas.push(novaLojaNome);
+                    localStorage.setItem('matriz_lojas', JSON.stringify(lojas));
+                }
+                lojaSelecionada = novaLojaNome;
+            }
+
+            const codigo = document.getElementById('env-codigo').value.trim().toUpperCase();
+            const qtdEnviada = parseInt(document.getElementById('env-qtd').value);
+
+            // Calcular estoque atual para validar
+            const estoque = calcularEstoqueAtual();
+            if (!estoque[codigo] || estoque[codigo].qtd < qtdEnviada) {
+                alert('❌ Erro: Quantidade insuficiente na matriz para este produto! Verifique o estoque atual.');
+                return;
+            }
+
+            const novoEnvio = {
+                data: document.getElementById('env-data').value,
+                loja: lojaSelecionada,
+                codigo: codigo,
+                qtd: qtdEnviada,
+                resp: document.getElementById('env-resp').value
+            };
+
+            let envios = JSON.parse(localStorage.getItem('matriz_envios') || '[]');
+            envios.push(novoEnvio);
+            localStorage.setItem('matriz_envios', JSON.stringify(envios));
+
+            alert('🚚 Envio para a loja "' + lojaSelecionada + '" registrado com sucesso!');
+            document.getElementById('form-envio').reset();
+            document.getElementById('env-data').valueAsDate = new Date();
+            document.getElementById('div-nova-loja').classList.add('hidden');
+            atualizarSelectLojas();
+        }
+
+        function calcularEstoqueAtual() {
+            let entradas = JSON.parse(localStorage.getItem('matriz_entradas') || '[]');
+            let envios = JSON.parse(localStorage.getItem('matriz_envios') || '[]');
+            let produtos = {};
+
+            entradas.forEach(item => {
+                if (!produtos[item.codigo]) {
+                    produtos[item.codigo] = {
+                        codigo: item.codigo,
+                        descricao: item.descricao,
+                        qtd: 0,
+                        valorUnitario: item.valor
+                    };
+                }
+                produtos[item.codigo].qtd += item.qtd;
+                produtos[item.codigo].valorUnitario = item.valor; // atualiza último preço
+            });
+
+            envios.forEach(env => {
+                if (produtos[env.codigo]) {
+                    produtos[env.codigo].qtd -= env.qtd;
+                }
+            });
+
+            return produtos;
+        }
+
+        function atualizarTabelaEstoque() {
+            const produtos = calcularEstoqueAtual();
+            const tbody = document.getElementById('tabela-estoque-body');
+            tbody.innerHTML = '';
+
+            for (let codigo in produtos) {
+                let p = produtos[codigo];
+                let totalVal = p.qtd * p.valorUnitario;
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-center">${p.codigo}</td>
+                    <td class="p-3">${p.descricao}</td>
+                    <td class="p-3 text-center font-bold ${p.qtd <= 2 ? 'text-red-600' : 'text-emerald-700'}">${p.qtd}</td>
+                    <td class="p-3 text-right">R$ ${p.valorUnitario.toFixed(2)}</td>
+                    <td class="p-3 text-right font-semibold">R$ ${totalVal.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function exportarExcel() {
+            let entradas = JSON.parse(localStorage.getItem('matriz_entradas') || '[]');
+            let envios = JSON.parse(localStorage.getItem('matriz_envios') || '[]');
+            let produtos = calcularEstoqueAtual();
+
+            // Formatar dados para planilhas
+            let dadosEstoque = [];
+            for (let k in produtos) {
+                let p = produtos[k];
+                dadosEstoque.push({
+                    "Cód. Produto": p.codigo,
+                    "Descrição": p.descricao,
+                    "Qtd. Matriz": p.qtd,
+                    "Valor Unitário (R$)": p.valorUnitario,
+                    "Valor Total (R$)": p.qtd * p.valorUnitario
+                });
+            }
+
+            let dadosEntradas = entradas.map(e => ({
+                "Nº da DANFE": e.danfe,
+                "Data": e.data,
+                "Fornecedor": e.fornecedor,
+                "Cód. Produto": e.codigo,
+                "Descrição": e.descricao,
+                "Quantidade": e.qtd,
+                "Valor Unitário": e.valor,
+                "Valor Total": e.qtd * e.valor
+            }));
+
+            let dadosEnvios = envios.map(en => ({
+                "Data Envio": en.data,
+                "Loja Filial Destino": en.loja,
+                "Cód. Produto": en.codigo,
+                "Quantidade Enviada": en.qtd,
+                "Responsável": en.resp
+            }));
+
+            // Criar workbook do SheetJS
+            const wb = XLSX.utils.book_new();
+            
+            const wsEstoque = XLSX.utils.json_to_sheet(dadosEstoque);
+            const wsEntradas = XLSX.utils.json_to_sheet(dadosEntradas);
+            const wsEnvios = XLSX.utils.json_to_sheet(dadosEnvios);
+
+            XLSX.utils.book_append_sheet(wb, wsEstoque, "Estoque Matriz");
+            XLSX.utils.book_append_sheet(wb, wsEntradas, "Entradas (DANFE)");
+            XLSX.utils.book_append_sheet(wb, wsEnvios, "Envios Filiais");
+
+            // Gerar arquivo Excel e baixar automaticamente
+            XLSX.writeFile(wb, "Relatorio_Matriz_Moveis_Colchoes.xlsx");
+            alert('📊 Relatório Excel gerado e baixado com sucesso!');
+        }
+    </script>
+</body>
+</html>
